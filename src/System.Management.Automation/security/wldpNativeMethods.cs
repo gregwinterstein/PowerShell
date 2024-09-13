@@ -152,7 +152,7 @@ namespace System.Management.Automation.Security
                 }
             }
 
-            return s_systemLockdownPolicy.Value;
+            return SystemEnforcementMode.None;
         }
 
         private static readonly object s_systemLockdownPolicyLock = new object();
