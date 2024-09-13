@@ -140,49 +140,6 @@ namespace Microsoft.PowerShell
             // Get the execution policy
             _executionPolicy = SecuritySupport.GetExecutionPolicy(_shellId);
 
-            // Always check the SAFER APIs if code integrity isn't being handled system-wide through
-            // WLDP or AppLocker. In those cases, the scripts will be run in ConstrainedLanguage.
-            // Otherwise, block.
-            // SAFER APIs are not on CSS or OneCore
-            if (SystemPolicy.GetSystemLockdownPolicy() != SystemEnforcementMode.Enforce)
-            {
-                SaferPolicy saferPolicy = SaferPolicy.Disallowed;
-                int saferAttempt = 0;
-                bool gotSaferPolicy = false;
-
-                // We need to put in a retry workaround, as the SAFER APIs fail when under stress.
-                while ((!gotSaferPolicy) && (saferAttempt < 5))
-                {
-                    try
-                    {
-                        saferPolicy = SecuritySupport.GetSaferPolicy(path, null);
-                        gotSaferPolicy = true;
-                    }
-                    catch (System.ComponentModel.Win32Exception)
-                    {
-                        if (saferAttempt > 4)
-                        {
-                            throw;
-                        }
-
-                        saferAttempt++;
-                        System.Threading.Thread.Sleep(100);
-                    }
-                }
-
-                // If the script is disallowed via AppLocker, block the file
-                // unless the system-wide lockdown policy is "Enforce" (where all PowerShell
-                // scripts are in blocked). If the system policy is "Enforce", then the
-                // script will be allowed (but ConstrainedLanguage will be applied).
-                if (saferPolicy == SaferPolicy.Disallowed)
-                {
-                    reasonMessage = StringUtil.Format(Authenticode.Reason_DisallowedBySafer, path);
-                    reason = new UnauthorizedAccessException(reasonMessage);
-
-                    return false;
-                }
-            }
-
             // WLDP and Applocker takes priority over powershell execution policy.
             // See if they want to bypass the authorization manager
             if (_executionPolicy == ExecutionPolicy.Bypass)
