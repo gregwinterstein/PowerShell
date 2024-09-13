@@ -281,49 +281,18 @@ namespace System.Management.Automation
 
             set
             {
-                // If we're moving to ConstrainedLanguage, invalidate the binding
-                // caches. After that, the binding rules encode the language mode.
                 if (value == PSLanguageMode.ConstrainedLanguage)
                 {
-                    HasRunspaceEverUsedConstrainedLanguageMode = true;
-
-                    // If 'ExecutionContext.HasEverUsedConstrainedLanguage' is already set to True, then we have
-                    // already invalidated all cached binders, and binders already started to generate code with
-                    // consideration of 'LanguageMode'. In such case, we don't need to invalidate cached binders
-                    // again.
-                    // Note that when executing script blocks marked as 'FullLanguage' in a 'ConstrainedLanguage'
-                    // environment, we will set and Restore 'context.LanguageMode' very often. But we should not
-                    // invalidate the cached binders every time we restore to 'ConstrainedLanguage'.
-                    if (!ExecutionContext.HasEverUsedConstrainedLanguage)
-                    {
-                        lock (lockObject)
-                        {
-                            // If another thread has already set 'ExecutionContext.HasEverUsedConstrainedLanguage'
-                            // while we are waiting on the lock, then nothing needs to be done.
-                            if (!ExecutionContext.HasEverUsedConstrainedLanguage)
-                            {
-                                PSSetMemberBinder.InvalidateCache();
-                                PSInvokeMemberBinder.InvalidateCache();
-                                PSConvertBinder.InvalidateCache();
-                                PSBinaryOperationBinder.InvalidateCache();
-                                PSGetIndexBinder.InvalidateCache();
-                                PSSetIndexBinder.InvalidateCache();
-                                PSCreateInstanceBinder.InvalidateCache();
-
-                                // Set 'HasEverUsedConstrainedLanguage' at the very end to guarantee other threads to wait until
-                                // all invalidation operations are done.
-                                UntrustedObjects = new ConditionalWeakTable<object, object>();
-                                ExecutionContext.HasEverUsedConstrainedLanguage = true;
-                            }
-                        }
-                    }
+                    _languageMode = PSLanguageMode.FullLanguage;
+                }
+                else
+                {
+                    _languageMode = value;
                 }
 
                 // Conversion caches don't have version info / binding rules, so must be
                 // cleared every time.
                 LanguagePrimitives.RebuildConversionCache();
-
-                _languageMode = value;
             }
         }
 
